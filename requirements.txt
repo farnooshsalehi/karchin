@@ -1,0 +1,9 @@
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.34,<1.0
+python-multipart>=0.0.20,<1.0
+zstandard>=0.23,<1.0
+openai>=1.70,<2.0
+python-docx>=1.1,<2.0
+jdatetime>=5.2,<6.0
+python-dotenv>=1.1,<2.0
+pytest>=8.3,<9.0

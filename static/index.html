@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Worklog</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M7 3.5h7l4 4V20.5H7zM14 3.5v4h4M9.5 12h6M9.5 15h6M9.5 18h4"/></svg>
+      </div>
+      <div>
+        <h1>Worklog</h1>
+        <p>گزارش فنی از مکالمه‌های Codex</p>
+      </div>
+    </header>
+
+    <nav class="stepper" aria-label="مراحل کار">
+      <div class="step active" data-step="1"><span>۱</span><b>بارگذاری</b></div>
+      <i></i>
+      <div class="step" data-step="2"><span>۲</span><b>تحلیل</b></div>
+      <i></i>
+      <div class="step" data-step="3"><span>۳</span><b>بررسی و خروجی</b></div>
+    </nav>
+
+    <section id="upload-stage" class="stage">
+      <div class="stage-heading">
+        <div>
+          <span class="eyebrow">مرحله اول</span>
+          <h2>انتخاب فایل‌ها و بازه گزارش</h2>
+        </div>
+      </div>
+
+      <div id="drop-area" class="drop-area">
+        <div class="upload-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+        </div>
+        <h3>فایل‌های جلسه را اینجا رها کنید</h3>
+        <p>فرمت مجاز: <span dir="ltr">.jsonl.zst</span></p>
+        <button id="browse-button" type="button" class="secondary">
+          انتخاب چندین فایل
+        </button>
+        <input id="file-input" type="file" accept=".zst" multiple hidden>
+      </div>
+
+      <div id="file-list" class="file-list"></div>
+
+      <div class="form-section">
+        <div class="section-label">بازه گزارش</div>
+        <div class="date-grid">
+          <label>تاریخ شروع
+            <input id="start-date" type="date">
+          </label>
+          <label>تاریخ پایان
+            <input id="end-date" type="date">
+          </label>
+        </div>
+      </div>
+
+      <div class="stage-actions">
+        <button id="analyze-button" type="button" class="primary">تحلیل مکالمه‌ها</button>
+      </div>
+    </section>
+
+    <section id="analysis-stage" class="stage analysis-stage hidden">
+      <div class="stage-heading">
+        <div>
+          <span class="eyebrow">مرحله دوم</span>
+          <h2>تحلیل مکالمه‌ها</h2>
+        </div>
+      </div>
+      <div class="analysis-panel">
+        <div class="spinner" aria-hidden="true"></div>
+        <p id="status-text">در حال پردازش فایل‌ها...</p>
+      </div>
+      <div id="analysis-errors" class="error hidden"></div>
+    </section>
+
+    <section id="review-stage" class="stage hidden">
+      <div class="stage-heading">
+        <div>
+          <span class="eyebrow">مرحله سوم</span>
+          <h2>بررسی و خروجی گزارش</h2>
+        </div>
+      </div>
+
+      <label class="title-field">عنوان گزارش
+        <input id="report-title" type="text">
+      </label>
+
+      <div class="stats">
+        <span id="uploaded-count"></span>
+        <span id="analyzed-count"></span>
+        <span id="conversation-count"></span>
+      </div>
+
+      <div class="task-heading">
+        <div class="section-label">فعالیت‌های استخراج‌شده</div>
+        <button id="add-task" type="button" class="secondary compact">+ افزودن فعالیت</button>
+      </div>
+      <div id="task-list" class="task-list"></div>
+
+      <div class="stage-actions export-actions">
+        <button id="export-button" type="button" class="primary export-button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 20h14"/></svg>
+          خروجی Word
+        </button>
+      </div>
+      <div id="review-errors" class="error hidden"></div>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
