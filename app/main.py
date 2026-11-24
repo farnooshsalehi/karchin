@@ -1,16 +1,22 @@
+import json
 import os
+import subprocess
 from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 
 from app.ai_extractor import OpenAIExtractor
 from app.docx_export import create_worklog_docx
 from app.parser import filter_sessions_by_date, parse_session_file
-from app.persian import persian_month_title, title_filename
+from app.persian import (
+    gregorian_to_persian,
+    persian_month_title,
+    persian_to_gregorian,
+    title_filename,
+)
 
 load_dotenv()
 
@@ -21,9 +27,20 @@ EXPORT_DIR.mkdir(exist_ok=True)
 app = FastAPI(title="Worklog")
 
 
-class ExportRequest(BaseModel):
-    title: str
-    tasks: list[str]
+@app.get("/api/persian-today")
+def persian_today():
+    from datetime import date
+
+    today = date.today().isoformat()
+    return {"gregorian": today, "persian": gregorian_to_persian(today)}
+
+
+@app.post("/api/persian-to-gregorian")
+def convert_persian_date(data: dict[str, str]):
+    try:
+        return {"gregorian": persian_to_gregorian(data["value"])}
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail="تاریخ شمسی معتبر نیست") from exc
 
 
 @app.post("/api/analyze")
@@ -91,6 +108,53 @@ def export(request: ExportRequest):
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         filename=output.name,
     )
+
+
+@app.post("/api/select-files")
+def select_files():
+    initial_directory = Path(r"C:\Users\MammutConnect\.codex\sessions\2026")
+    if not initial_directory.exists():
+        initial_directory = initial_directory.parent
+
+    script = r'''Add-Type -AssemblyName System.Windows.Forms
+$dialog = New-Object System.Windows.Forms.OpenFileDialog
+$dialog.InitialDirectory = $args[0]
+$dialog.Filter = 'Codex session files (*.jsonl.zst)|*.jsonl.zst|All files (*.*)|*.*'
+$dialog.Multiselect = $true
+$dialog.Title = 'انتخاب فایل‌های جلسه Codex'
+if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { return }
+$dialog.FileNames | ForEach-Object {
+    $file = Get-Item $_
+    [PSCustomObject]@{
+        name = $file.Name
+        size = $file.Length
+        data = [Convert]::ToBase64String([IO.File]::ReadAllBytes($file.FullName))
+    }
+} | ConvertTo-Json -Depth 3 -Compress'''
+
+    try:
+        result = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-STA", "-Command", script, str(initial_directory)],
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail="باز کردن پنجره انتخاب فایل با خطا مواجه شد")
+
+        output = result.stdout.strip()
+        if not output:
+            return {"files": []}
+
+        parsed = json.loads(output)
+        if isinstance(parsed, dict):
+            parsed = [parsed]
+        return {"files": parsed}
+    except subprocess.TimeoutExpired as exc:
+        raise HTTPException(status_code=504, detail="انتخاب فایل زمان‌سنجی شد") from exc
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=500, detail="نتیجه انتخاب فایل قابل پردازش نبود") from exc
 
 
 app.mount("/", StaticFiles(directory=ROOT / "static", html=True), name="static")

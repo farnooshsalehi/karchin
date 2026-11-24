@@ -37,6 +37,17 @@ def persian_month_title(start_date: str, end_date: str) -> str:
     return "گزارش فنی بازه انتخابی"
 
 
+def persian_to_gregorian(value: str) -> str:
+    year, month, day = (int(part) for part in value.split("-"))
+    return jdatetime.date(year, month, day).togregorian().isoformat()
+
+
+def gregorian_to_persian(value: str) -> dict:
+    gregorian = date.fromisoformat(value)
+    persian = jdatetime.date.fromgregorian(date=gregorian)
+    return {"year": persian.year, "month": persian.month, "day": persian.day}
+
+
 def title_filename(title: str) -> str:
     cleaned = title.strip()
     for character in '<>:"/\\|?*':

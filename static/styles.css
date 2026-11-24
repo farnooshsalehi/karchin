@@ -227,7 +227,8 @@ body {
 
 label { display: block; color: #526078; font-size: 12px; font-weight: 700; }
 
-input[type="date"], input[type="text"], textarea {
+input[type="date"], input[type="text"], textarea,
+.jalali-date select {
   width: 100%;
   margin-top: 7px;
   border: 1px solid #d8deea;
@@ -362,6 +363,25 @@ button:active { transform: translateY(1px); }
   padding: 11px 13px;
   font-size: 12px;
   white-space: pre-line;
+}
+
+.jalali-date {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr 1fr;
+  gap: 6px;
+  direction: rtl;
+}
+
+.jalali-date select {
+  height: 44px;
+  margin: 7px 0 0;
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+.jalali-date select:focus {
+  border-color: #8078c7;
+  box-shadow: 0 0 0 3px rgba(79,70,165,.09);
 }
 
 @media (max-width: 640px) {

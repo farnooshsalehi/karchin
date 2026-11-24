@@ -39,7 +39,27 @@ function addFiles(files) {
   renderFiles();
 }
 
-document.querySelector("#browse-button").addEventListener("click", () => fileInput.click());
+document.querySelector("#browse-button").addEventListener("click", async () => {
+  try {
+    const response = await fetch("/api/select-files", { method: "POST" });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.detail || "خطا در باز کردن انتخابگر فایل");
+
+    for (const item of data.files || []) {
+      const bytes = atob(item.data);
+      const buffer = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) buffer[i] = bytes.charCodeAt(i);
+      const file = new File([buffer], item.name, { type: "application/zstd" });
+      if (!selectedFiles.some(existing => existing.name === file.name && existing.size === file.size)) {
+        selectedFiles.push(file);
+      }
+    }
+    renderFiles();
+  } catch (error) {
+    alert(error.message);
+  }
+});
+
 fileInput.addEventListener("change", () => addFiles(fileInput.files));
 
 dropArea.addEventListener("dragover", event => {
@@ -54,11 +74,6 @@ dropArea.addEventListener("drop", event => {
   dropArea.classList.remove("dragging");
   addFiles(event.dataTransfer.files);
 });
-
-const today = new Date();
-const todayIso = today.toISOString().slice(0, 10);
-document.querySelector("#start-date").value = todayIso;
-document.querySelector("#end-date").value = todayIso;
 
 function setStep(activeStep) {
   document.querySelectorAll(".stepper .step").forEach((step, index) => {
@@ -84,8 +99,8 @@ document.querySelector("#analyze-button").addEventListener("click", async () => 
     return;
   }
 
-  const startDate = document.querySelector("#start-date").value;
-  const endDate = document.querySelector("#end-date").value;
+  const startDate = document.querySelector("#start-date").dataset.gregorian;
+  const endDate = document.querySelector("#end-date").dataset.gregorian;
   if (!startDate || !endDate || startDate > endDate) {
     alert("بازه زمانی معتبر انتخاب کنید.");
     return;
@@ -247,3 +262,83 @@ document.querySelector("#export-button").addEventListener("click", async () => {
     showError(error, exportError.message);
   }
 });
+
+const PERSIAN_MONTHS = [
+  "فروردین", "اردیبهشت", "خرداد", "تیر", "مرداد", "شهریور",
+  "مهر", "آبان", "آذر", "دی", "بهمن", "اسفند"
+];
+
+function persianDigits(value) {
+  return String(value).replace(/\d/g, digit => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]);
+}
+
+async function setupPersianDate(containerId) {
+  const container = document.querySelector(`#${containerId}`);
+  const daySelect = container.querySelector(".jalali-day");
+  const monthSelect = container.querySelector(".jalali-month");
+  const yearSelect = container.querySelector(".jalali-year");
+
+  const todayResponse = await fetch("/api/persian-today");
+  const today = await todayResponse.json();
+  const current = today.persian;
+
+  for (let year = current.year - 5; year <= current.year + 5; year++) {
+    const option = document.createElement("option");
+    option.value = year;
+    option.textContent = persianDigits(year);
+    yearSelect.append(option);
+  }
+
+  PERSIAN_MONTHS.forEach((name, index) => {
+    const option = document.createElement("option");
+    option.value = index + 1;
+    option.textContent = name;
+    monthSelect.append(option);
+  });
+
+  yearSelect.value = current.year;
+  monthSelect.value = current.month;
+
+  async function updateDate() {
+    const year = Number(yearSelect.value);
+    const month = Number(monthSelect.value);
+    const previousDay = Number(daySelect.value) || current.day;
+    daySelect.innerHTML = "";
+
+    let length = month <= 6 ? 31 : month <= 11 ? 30 : 29;
+    if (month === 12) {
+      const leapCheck = await fetch("/api/persian-to-gregorian", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ value: `${year}-12-30` })
+      });
+      if (leapCheck.ok) length = 30;
+    }
+
+    for (let day = 1; day <= length; day++) {
+      const option = document.createElement("option");
+      option.value = day;
+      option.textContent = persianDigits(day);
+      daySelect.append(option);
+    }
+    daySelect.value = Math.min(previousDay, length);
+
+    const conversion = await fetch("/api/persian-to-gregorian", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value: `${year}-${month}-${daySelect.value}` })
+    });
+    if (conversion.ok) {
+      const result = await conversion.json();
+      container.dataset.gregorian = result.gregorian;
+    }
+  }
+
+  yearSelect.addEventListener("change", updateDate);
+  monthSelect.addEventListener("change", updateDate);
+  daySelect.addEventListener("change", updateDate);
+  await updateDate();
+}
+
+setupPersianDate("start-date");
+setupPersianDate("end-date");

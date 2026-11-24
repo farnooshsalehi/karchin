@@ -52,10 +52,18 @@
         <div class="section-label">بازه گزارش</div>
         <div class="date-grid">
           <label>تاریخ شروع
-            <input id="start-date" type="date">
+            <div class="jalali-date" id="start-date">
+              <select class="jalali-day" aria-label="روز شروع"></select>
+              <select class="jalali-month" aria-label="ماه شروع"></select>
+              <select class="jalali-year" aria-label="سال شروع"></select>
+            </div>
           </label>
           <label>تاریخ پایان
-            <input id="end-date" type="date">
+            <div class="jalali-date" id="end-date">
+              <select class="jalali-day" aria-label="روز پایان"></select>
+              <select class="jalali-month" aria-label="ماه پایان"></select>
+              <select class="jalali-year" aria-label="سال پایان"></select>
+            </div>
           </label>
         </div>
       </div>
