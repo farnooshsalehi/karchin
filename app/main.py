@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import subprocess
@@ -112,29 +113,41 @@ def export(request: ExportRequest):
 
 @app.post("/api/select-files")
 def select_files():
-    initial_directory = Path(r"C:\Users\MammutConnect\.codex\sessions\2026")
-    if not initial_directory.exists():
-        initial_directory = initial_directory.parent
+    initial_directory = Path(os.environ.get(
+        "CODEX_SESSIONS_DIR",
+        str(Path.home() / ".codex" / "sessions" / "2026"),
+    ))
+    if not initial_directory.is_dir():
+        raise HTTPException(
+            status_code=404,
+            detail=f"پوشه جلسات Codex پیدا نشد: {initial_directory}",
+        )
 
-    script = r'''Add-Type -AssemblyName System.Windows.Forms
+    folder = str(initial_directory).replace("'", "''")
+    script = f'''Add-Type -AssemblyName System.Windows.Forms
 $dialog = New-Object System.Windows.Forms.OpenFileDialog
-$dialog.InitialDirectory = $args[0]
-$dialog.Filter = 'Codex session files (*.jsonl.zst)|*.jsonl.zst|All files (*.*)|*.*'
+$dialog.InitialDirectory = '{folder}'
+$dialog.RestoreDirectory = $true
+$dialog.Filter = 'فایل‌های Codex (*.jsonl.zst)|*.jsonl.zst'
 $dialog.Multiselect = $true
 $dialog.Title = 'انتخاب فایل‌های جلسه Codex'
-if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) { return }
-$dialog.FileNames | ForEach-Object {
+$dialog.CheckFileExists = $true
+$dialog.CheckPathExists = $true
+if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {{ return }}
+$dialog.FileNames | ForEach-Object {{
     $file = Get-Item $_
-    [PSCustomObject]@{
+    [PSCustomObject]@{{
         name = $file.Name
         size = $file.Length
         data = [Convert]::ToBase64String([IO.File]::ReadAllBytes($file.FullName))
-    }
-} | ConvertTo-Json -Depth 3 -Compress'''
+    }}
+}} | ConvertTo-Json -Depth 3 -Compress'''
+
+    encoded_script = base64.b64encode(script.encode("utf-16-le")).decode("ascii")
 
     try:
         result = subprocess.run(
-            ["powershell.exe", "-NoProfile", "-STA", "-Command", script, str(initial_directory)],
+            ["powershell.exe", "-NoProfile", "-STA", "-WindowStyle", "Normal", "-EncodedCommand", encoded_script],
             capture_output=True,
             text=True,
             timeout=300,
